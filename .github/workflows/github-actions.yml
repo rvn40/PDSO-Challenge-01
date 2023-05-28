@@ -57,7 +57,7 @@ jobs:
         with:
           host: ${{ env.SERVER_HOST }}
           username: ${{ env.SERVER_USER }}
-          key_path: $HOME/.ssh/sshPK.pem
+          key_path: ${HOME}/.ssh/sshPK.pem
           script: |
             docker pull $DOCKER_USERNAME/pdso-challenge-01:latest
             docker stop my-simple-webapp || true
