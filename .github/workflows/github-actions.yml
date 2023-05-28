@@ -25,20 +25,18 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Build Docker image
+      - name: Log in to Docker Hub
+        run: docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+
+      - name: Build Docker image and push Docker image to Docker Hub
         id: di_tag_main
         run: |
           DI_TAG_MAIN="main-$(date +%s)"
           docker buildx create --use
           docker buildx build --file Dockerfile --platform linux/amd64 -t $DOCKER_USERNAME/my-simple-webapp:$DI_TAG_MAIN .
+          docker push $DOCKER_USERNAME/my-simple-webapp:$DI_TAG_MAIN
           echo "DI_TAG_MAIN=$DI_TAG_MAIN" >> $GITHUB_OUTPUT
-
-      - name: Log in to Docker Hub
-        run: docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-
-      - name: Push Docker image to Docker Hub
-        run: docker push $DOCKER_USERNAME/my-simple-webapp:${{needs.build.outputs.di_tag_main}}
-            
+          
       - name: Log out from Docker Hub
         run: docker logout
     
