@@ -13,8 +13,9 @@ env:
   SERVER_USER: ${{secrets.SERVER_USER}}
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     outputs:
       di_tag_main: ${{ steps.di_tag_main.outputs.DI_TAG_MAIN }}
     steps:
@@ -27,16 +28,22 @@ jobs:
       - name: Build Docker image
         id: di_tag_main
         run: |
-          DI_TAG_MAIN="stg-devops-$(date +%s)"
+          DI_TAG_MAIN="main-$(date +%s)"
           docker buildx create --use
           docker buildx build --file Dockerfile --platform linux/amd64 -t $DOCKER_USERNAME/my-simple-webapp:$DI_TAG_MAIN .
           echo "DI_TAG_MAIN=$DI_TAG_MAIN" >> $GITHUB_OUTPUT
-
+    
+    
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    steps:
       - name: Log in to Docker Hub
         run: docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
 
       - name: Push Docker image to Docker Hub
-        run: docker push $DOCKER_USERNAME/my-simple-webapp:${{ needs.build.outputs.di_tag_main}}
+        run: docker push $DOCKER_USERNAME/my-simple-webapp:${{needs.build.outputs.di_tag_main}}
 
       - name: Deploy to Ubuntu server
         uses: appleboy/ssh-action@master
@@ -52,7 +59,7 @@ jobs:
             docker pull $DOCKER_USERNAME/my-simple-webapp:latest
             docker stop my-simple-webapp || true
             docker rm -f my-simple-webapp || true
-            docker run -d --name my-simple-webapp -p 80:8080 -e PORT=8080 $DOCKER_USERNAME/my-simple-webapp:${{ needs.build.outputs.di_tag_main}}
+            docker run -d --name my-simple-webapp -p 80:8080 -e PORT=8080 $DOCKER_USERNAME/my-simple-webapp:${{needs.build.outputs.di_tag_main}}
             
       - name: Log out from Docker Hub
         run: docker logout
