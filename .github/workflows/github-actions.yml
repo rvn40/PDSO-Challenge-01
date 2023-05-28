@@ -32,7 +32,7 @@ jobs:
         id: di_tag_main
         run: |
           DI_TAG_MAIN="main-$(date +%s)"
-          docker buildx build . --file Dockerfile --push --platform linux/amd64 -t $DOCKER_USERNAME/my-simple-webapp:$DI_TAG_MAIN
+          docker buildx build . --file Dockerfile --push --platform linux/amd64 -t $DOCKER_USERNAME/pdso-challenge-01:$DI_TAG_MAIN
           echo "DI_TAG_MAIN=$DI_TAG_MAIN" >> $GITHUB_OUTPUT
 
       - name: Log out from Docker Hub
@@ -44,6 +44,13 @@ jobs:
     needs: build
     if: github.ref == 'refs/heads/main'
     steps:
+      - name: Setup ssh key
+        env:
+          SSH_KEY: ${{ env.SSH_PRIVATE_KEY }}
+        run: |
+          echo $SSH_KEY | base64 -d > $HOME/.ssh/sshPK.pem
+          chmod 400 $HOME/.ssh/sshPK.pem
+
       - name: Deploy to Ubuntu server
         uses: appleboy/ssh-action@v0.1.10
         env:
@@ -51,11 +58,9 @@ jobs:
         with:
           host: ${{ env.SERVER_HOST }}
           username: ${{ env.SERVER_USER }}
-          key_path: ~/.ssh/sshPK.pem
+          key_path: $HOME/.ssh/sshPK.pem
           script: |
-            echo $SSH_KEY | base64 -d > ~/.ssh/sshPK.pem
-            chmod 400 ~/.ssh/sshPK.pem
-            docker pull $DOCKER_USERNAME/my-simple-webapp:latest
+            docker pull $DOCKER_USERNAME/pdso-challenge-01:latest
             docker stop my-simple-webapp || true
             docker rm -f my-simple-webapp || true
-            docker run -d --name my-simple-webapp -p 80:8080 -e PORT=8080 $DOCKER_USERNAME/my-simple-webapp:${{needs.build.outputs.di_tag_main}}
+            docker run -d --name my-simple-webapp -p 80:8080 -e PORT=8080 $DOCKER_USERNAME/pdso-challenge-01:${{needs.build.outputs.di_tag_main}}
