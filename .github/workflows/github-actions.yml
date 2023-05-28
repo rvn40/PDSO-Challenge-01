@@ -36,7 +36,7 @@ jobs:
           docker buildx build --file Dockerfile --platform linux/amd64 -t $DOCKER_USERNAME/my-simple-webapp:$DI_TAG_MAIN .
           docker push $DOCKER_USERNAME/my-simple-webapp:$DI_TAG_MAIN
           echo "DI_TAG_MAIN=$DI_TAG_MAIN" >> $GITHUB_OUTPUT
-          
+
       - name: Log out from Docker Hub
         run: docker logout
     
