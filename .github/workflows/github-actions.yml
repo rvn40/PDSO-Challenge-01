@@ -44,15 +44,12 @@ jobs:
     needs: build
     if: github.ref == 'refs/heads/main'
     steps:
-      - name: Setup ssh key
-        run: echo "SSH_KEY=$(echo ${{ env.SSH_PRIVATE_KEY }} | base64 -d)" >> $GITHUB_ENV
-
       - name: Deploy to Ubuntu server
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ env.SERVER_HOST }}
           username: ${{ env.SERVER_USER }}
-          key: ${{ env.SSH_KEY }}
+          key: $(echo ${{ env.SSH_PRIVATE_KEY }} | base64 -d)
           script: |
             docker pull $DOCKER_USERNAME/pdso-challenge-01:latest
             docker stop my-simple-webapp || true
