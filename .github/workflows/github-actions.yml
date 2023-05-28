@@ -45,10 +45,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Setup ssh key
-        env:
-          SSH_KEY: ${{ env.SSH_PRIVATE_KEY }}
-        run: |
-          echo "SSH_KEY=$(echo $SSH_KEY | base64 -d)" >> $GITHUB_ENV
+        run: echo "SSH_KEY=$(echo ${{ env.SSH_PRIVATE_KEY }} | base64 -d)" >> $GITHUB_ENV
 
       - name: Deploy to Ubuntu server
         uses: appleboy/ssh-action@v0.1.10
