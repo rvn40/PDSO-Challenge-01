@@ -46,10 +46,12 @@ jobs:
     steps:
       - name: Deploy to Ubuntu server
         uses: appleboy/ssh-action@v0.1.10
+        env:
+          SSH_KEY: $(echo ${{ env.SSH_PRIVATE_KEY }} | base64 -d)
         with:
           host: ${{ env.SERVER_HOST }}
           username: ${{ env.SERVER_USER }}
-          key: $(echo ${{ env.SSH_PRIVATE_KEY }} | base64 -d)
+          key: ${{ env.SSH_KEY }}
           script: |
             docker pull $DOCKER_USERNAME/pdso-challenge-01:latest
             docker stop my-simple-webapp || true
