@@ -32,8 +32,7 @@ jobs:
         id: di_tag_main
         run: |
           DI_TAG_MAIN="main-$(date +%s)"
-          docker buildx create --use
-          docker buildx build --file Dockerfile --platform linux/amd64 -t $DOCKER_USERNAME/my-simple-webapp:$DI_TAG_MAIN .
+          docker buildx build . --file Dockerfile --platform linux/amd64 -t $DOCKER_USERNAME/my-simple-webapp:$DI_TAG_MAIN
           docker push $DOCKER_USERNAME/my-simple-webapp:$DI_TAG_MAIN
           echo "DI_TAG_MAIN=$DI_TAG_MAIN" >> $GITHUB_OUTPUT
 
