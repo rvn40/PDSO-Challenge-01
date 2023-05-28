@@ -52,7 +52,7 @@ jobs:
             docker pull $DOCKER_USERNAME/my-simple-webapp:latest
             docker stop my-simple-webapp || true
             docker rm -f my-simple-webapp || true
-            docker run -d --name my-simple-webapp -p 80:80 -e PORT=80 $DOCKER_USERNAME/my-simple-webapp:${{ needs.build.outputs.di_tag_main}}
+            docker run -d --name my-simple-webapp -p 80:8080 -e PORT=8080 $DOCKER_USERNAME/my-simple-webapp:${{ needs.build.outputs.di_tag_main}}
             
       - name: Log out from Docker Hub
         run: docker logout

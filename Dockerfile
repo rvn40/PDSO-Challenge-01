@@ -5,18 +5,19 @@ WORKDIR /app
 
 COPY files/app .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o app .
+RUN go mod init simplewebapp && CGO_ENABLED=0 GOOS=linux go build -o simplewebapp simpleApp.go
 
 # Deploy it with a minimal image 
-FROM alpine:latest
+FROM alpine:3.18.0
 
-RUN apk --no-cache add --update tzdata ca-certificates && \
+RUN mkdir -p /app && \
+    apk --no-cache add --update tzdata ca-certificates && \
     cp /usr/share/zoneinfo/Asia/Jakarta /etc/localtime && \
     echo "Asia/Jakarta" >  /etc/timezone && \
     apk del tzdata
 
-COPY --from=builder /app /
+COPY --from=builder /app/simplewebapp /app/
 
 WORKDIR /app
 
-CMD ["./app"]
+CMD ["./simplewebapp"]
