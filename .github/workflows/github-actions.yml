@@ -51,13 +51,14 @@ jobs:
           mkdir -p $HOME/.ssh
           echo $SSH_KEY | base64 -d > $HOME/.ssh/sshPK.pem
           chmod 400 $HOME/.ssh/sshPK.pem
+          echo "SSH_KEY_PATH=$(echo $HOME/.ssh/sshPK.pem)" >> $GITHUB_ENV
 
       - name: Deploy to Ubuntu server
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ env.SERVER_HOST }}
           username: ${{ env.SERVER_USER }}
-          key_path: ${HOME}/.ssh/sshPK.pem
+          key_path: ${{ env.SSH_KEY_PATH }}
           script: |
             docker pull $DOCKER_USERNAME/pdso-challenge-01:latest
             docker stop my-simple-webapp || true
