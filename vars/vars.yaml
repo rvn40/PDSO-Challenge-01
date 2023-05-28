@@ -1,0 +1,35 @@
+---
+
+
+#################################
+# Global use Variables
+#################################
+global:
+  region: "us-west-2"
+
+#################################
+# VPC Variables
+#################################
+vpc:
+  name: "pdso-vpc"
+  cidr_block: "172.16.0.0/16"
+  subnets:
+    public_name_tag: "pdso-public-subnet"
+    private_name_tag: "pdso-private-subnet"
+    public_subnet:
+      - az: "a"
+        cidr: "172.16.0.0/24"
+    private_subnet:
+      - az: "b"
+        cidr: "172.16.1.0/24"
+  
+
+#################################
+# EC2 Variables
+#################################
+ec2:
+  - name_tag: "pdso-webserver"
+    key_name: "pdso"
+    instance_type: "t2.small"
+    AMI: "ami-0c65adc9a5c1b5d7c"  # Ubuntu 20.04 LTS
+    default_user: "ubuntu"

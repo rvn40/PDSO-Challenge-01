@@ -1,0 +1,110 @@
+---
+
+- name: Create EC2 instance on created public subnet
+  ec2_instance:
+    access_key: "{{ AWS_ACCESS_KEY }}"
+    secret_key: "{{ AWS_SECRET_KEY }}"
+    instance_type: "{{ item.0.instance_type }}"
+    image_id: "{{ item.0.AMI }}"
+    key_name: "{{ item.0.key_name }}"
+    region: "{{ global.region }}"
+    vpc_subnet_id: "{{ item.1.subnet.id }}"  # Replace with the actual subnet ID of your public subnet
+    security_groups: ["sshCon", "webCon"]
+    volumes:
+      - device_name: /dev/sda1
+        ebs:
+          volume_size: 15
+          delete_on_termination: true
+    tags:
+      Name: "{{ item.0.name_tag }}"
+  with_nested: 
+    - "{{ ec2 }}"
+    - "{{ ec2_vpc_subnet_public.results }}"
+  register: ec2_instances
+
+- name: Debug
+  debug:
+    msg: "{{ ec2_instances }}"
+
+- name: Wait for SSH to become available
+  wait_for:
+    host: "{{ ec2_instance.instances[0].public_ip_address }}"
+    port: 22
+    delay: 10
+    timeout: 300
+  loop: "{{ ec2_instances.results }}"
+  loop_control:
+    loop_var: ec2_instance
+
+#- name: Add EC2 instance to known hosts
+#  known_hosts:
+#    name: "{{ ec2_instance.instances[0].public_ip_address }}"
+#    state: present
+#    path: "{{ lookup('env', 'HOME') }}/.ssh/known_hosts"
+#  loop: "{{ ec2_instances.results }}"
+#  loop_control:
+#    loop_var: ec2_instance
+
+- name: Print the IP of the created instance
+  debug:
+    msg: "Public IP: {{ ec2_instance.instances[0].public_ip_address }} | Private IP: {{ ec2_instance.instances[0].network_interfaces[0].private_ip_address }}" 
+  loop: "{{ ec2_instances.results }}"
+  loop_control:
+    loop_var: ec2_instance
+  
+- name: Append group on inventory
+  ansible.builtin.blockinfile:
+    path: hosts
+    insertafter: EOF
+    block: | 
+      
+      [webservers]
+      
+- name: Append list target on inventory
+  ansible.builtin.lineinfile:
+    path: hosts
+    insertafter: \[webservers\]
+    line: "{{ ec2_instance.instances[0].tags.Name }} ansible_host={{ ec2_instance.instances[0].public_ip_address }} ansible_user={{ ec2_instance.item[0].default_user }} ansible_ssh_private_key_file=files/secrets/sshPK.pem ansible_connection=ssh ansible_ssh_extra_args='-o StrictHostKeyChecking=no' ansible_python_interpreter=\"/usr/bin/python3\""
+  loop: "{{ ec2_instances.results }}"
+  loop_control:
+    loop_var: ec2_instance
+
+- name: Reload new inventory
+  meta: refresh_inventory
+  
+- pause:
+    seconds: 20
+
+- name: Create directory on EC2 instance
+  become: true
+  delegate_to: "{{ item }}"
+  file:
+    path: "{{ lookup('env', 'HOME') }}/scripts"
+    state: directory
+    mode: '0755'
+  loop: "{{ groups['webservers'] }}"
+
+- name: Copy shell script to EC2 instance
+  become: true
+  delegate_to: "{{ item }}"
+  copy:
+    src: files/scripts/  
+    dest: "{{ lookup('env', 'HOME') }}/scripts/"
+    mode: '0755'
+  loop: "{{ groups['webservers'] }}"
+
+- name: Change file permissions
+  become: true
+  delegate_to: "{{ item }}"
+  ansible.builtin.file:
+    path: "{{ lookup('env', 'HOME') }}/scripts/installDocker.sh"
+    owner: "ubuntu"
+    group: "ubuntu"
+    mode: a+x
+  loop: "{{ groups['webservers'] }}"
+
+- name: Execute shell script on EC2 instance
+  become: true
+  delegate_to: "{{ item }}"
+  command: "{{ lookup('env', 'HOME') }}/scripts/installDocker.sh"
+  loop: "{{ groups['webservers'] }}"

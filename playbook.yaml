@@ -1,0 +1,11 @@
+---
+
+- name: Provision AWS infrastructure
+  hosts: localhost
+  gather_facts: False
+  become: yes
+  vars_files:
+    - vars/vars.yaml
+  tasks:
+    - include_tasks: tasks/build_vpc.yaml
+    - include_tasks: tasks/ec2_provisioning.yaml

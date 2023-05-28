@@ -1,0 +1,107 @@
+---
+
+- name: Create the VPC
+  ec2_vpc_net:
+    name: "{{ vpc.name }}"
+    cidr_block: "{{ vpc.cidr_block }}"
+    region: "{{ global.region }}"
+    access_key: "{{ AWS_ACCESS_KEY }}"
+    secret_key: "{{ AWS_SECRET_KEY }}"
+    state: present
+  register: ec2_vpc_net
+
+- name: Debug public subnet
+  debug:
+    msg: "{{ ec2_vpc_net }}"
+
+- name: Create a public subnet
+  ec2_vpc_subnet:
+    vpc_id: "{{ ec2_vpc_net.vpc.id }}"
+    cidr: "{{ item.cidr }}"
+    region: "{{ global.region }}"
+    access_key: "{{ AWS_ACCESS_KEY }}"
+    secret_key: "{{ AWS_SECRET_KEY }}"
+    map_public: true
+    state: present
+    az: "{{ global.region }}{{ item.az }}"
+    resource_tags:
+      Name: "{{ vpc.subnets.public_name_tag }}"
+  loop: "{{ vpc.subnets.public_subnet }}"
+  register: ec2_vpc_subnet_public
+
+- name: Debug public subnet
+  debug:
+    msg: "{{ ec2_vpc_subnet_public }}"
+
+- name: Create a private subnet
+  ec2_vpc_subnet:
+    vpc_id: "{{ ec2_vpc_net.vpc.id }}"
+    cidr: "{{ item.cidr }}"
+    region: "{{ global.region }}"
+    access_key: "{{ AWS_ACCESS_KEY }}"
+    secret_key: "{{ AWS_SECRET_KEY }}"
+    state: present
+    az: "{{ global.region }}{{ item.az }}"
+    resource_tags:
+      Name: "{{ vpc.subnets.private_name_tag }}"
+  loop: "{{ vpc.subnets.private_subnet }}"
+  register: ec2_vpc_subnet_private
+
+- name: Create an internet gateway
+  ec2_vpc_igw:
+    vpc_id: "{{ ec2_vpc_net.vpc.id }}"
+    region: "{{ global.region }}"
+    access_key: "{{ AWS_ACCESS_KEY }}"
+    secret_key: "{{ AWS_SECRET_KEY }}"
+    state: present
+  register: igw_info
+
+- name: Debug internet gateway
+  debug:
+    msg: "{{ igw_info }}"
+
+- name: Create route table for public subnet
+  ec2_vpc_route_table:
+    vpc_id: "{{ ec2_vpc_net.vpc.id }}"
+    region: "{{ global.region }}"
+    access_key: "{{ AWS_ACCESS_KEY }}"
+    secret_key: "{{ AWS_SECRET_KEY }}"
+    subnets: "{{ item.subnet.id }}"
+    routes:
+      - dest: 0.0.0.0/0
+        gateway_id: "{{ igw_info.gateway_id }}"
+  loop: "{{ ec2_vpc_subnet_public.results }}"
+  register: rt_public
+
+- name: Configure security group sshCon
+  ec2_group:
+    name: sshCon
+    description: Allow SSH access
+    region: "{{ global.region }}"
+    access_key: "{{ AWS_ACCESS_KEY }}"
+    secret_key: "{{ AWS_SECRET_KEY }}"
+    vpc_id: "{{ ec2_vpc_net.vpc.id }}"
+    rules:
+      - proto: tcp
+        ports:
+          - 22
+        cidr_ip: 0.0.0.0/0
+      - proto: tcp
+        ports:
+          - 22
+        cidr_ip: "{{ vpc.cidr_block }}"
+        
+- name: Configure security group webCon
+  ec2_group:
+    name: webCon
+    description: Allow HTTP and HTTPS access
+    region: "{{ global.region }}"
+    access_key: "{{ AWS_ACCESS_KEY }}"
+    secret_key: "{{ AWS_SECRET_KEY }}"
+    vpc_id: "{{ ec2_vpc_net.vpc.id }}"
+    rules:
+      - proto: tcp
+        ports:
+          - 80
+          - 443
+        cidr_ip: 0.0.0.0/0

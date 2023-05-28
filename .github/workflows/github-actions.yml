@@ -1,36 +1,58 @@
-# This is a basic workflow to help you get started with Actions
+name: PSDO CI/CD Workflow
 
-name: CI
-
-# Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches:
+      - main
 
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
+env:
+  DOCKER_USERNAME: ${{secrets.DOCKER_USERNAME}}
+  DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
+  SSH_PRIVATE_KEY: ${{secrets.SSH_PRIVATE_KEY}}
+  SERVER_HOST: ${{secrets.SERVER_HOST}}
+  SERVER_USER: ${{secrets.SERVER_USER}}
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
+  build-and-deploy:
     runs-on: ubuntu-latest
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
+    outputs:
+      di_tag_main: ${{ steps.di_tag_main.outputs.DI_TAG_MAIN }}
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
 
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
+      - name: Build Docker image
+        id: di_tag_main
         run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+          DI_TAG_MAIN="stg-devops-$(date +%s)"
+          docker buildx create --use
+          docker buildx build --file Dockerfile --platform linux/amd64 -t $DOCKER_USERNAME/my-simple-webapp:$DI_TAG_MAIN .
+          echo "DI_TAG_MAIN=$DI_TAG_MAIN" >> $GITHUB_OUTPUT
+
+      - name: Log in to Docker Hub
+        run: docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+
+      - name: Push Docker image to Docker Hub
+        run: docker push $DOCKER_USERNAME/my-simple-webapp:${{ needs.build.outputs.di_tag_main}}
+
+      - name: Deploy to Ubuntu server
+        uses: appleboy/ssh-action@master
+        env:
+          SSH_KEY: ${{ env.SSH_PRIVATE_KEY }}
+        with:
+          host: ${{ env.SERVER_HOST }}
+          username: ${{ env.SERVER_USER }}
+          key_path: ~/.ssh/sshPK.pem
+          script: |
+            echo $SSH_KEY | base64 -d > ~/.ssh/sshPK.pem
+            chmod 400 ~/.ssh/sshPK.pem
+            docker pull $DOCKER_USERNAME/my-simple-webapp:latest
+            docker stop my-simple-webapp || true
+            docker rm -f my-simple-webapp || true
+            docker run -d --name my-simple-webapp -p 80:80 -e PORT=80 $DOCKER_USERNAME/my-simple-webapp:${{ needs.build.outputs.di_tag_main}}
+            
+      - name: Log out from Docker Hub
+        run: docker logout
