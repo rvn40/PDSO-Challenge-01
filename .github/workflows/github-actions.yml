@@ -52,7 +52,5 @@ jobs:
           username: ${{ env.SERVER_USER }}
           key: ${{ env.SSH_PRIVATE_KEY}}
           script: |
-            sudo docker pull $DOCKER_USERNAME/pdso-challenge-01:${{needs.build.outputs.di_tag_main}}
-            sudo docker stop my-simple-webapp || true
-            sudo docker rm -f my-simple-webapp || true
+            sudo docker rm -f my-simple-webapp
             sudo docker run -d --name my-simple-webapp -p 80:8080 -e PORT=8080 $DOCKER_USERNAME/pdso-challenge-01:${{needs.build.outputs.di_tag_main}}
