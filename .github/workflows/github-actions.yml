@@ -50,7 +50,7 @@ jobs:
           host: ${{ env.SERVER_HOST }}
           port: 22
           username: ${{ env.SERVER_USER }}
-          key: ${{ env.SSH_PRIVATE_KEY }}
+          key: ${{ env.SSH_PRIVATE_KEY}}
           script: |
             sudo docker pull $DOCKER_USERNAME/pdso-challenge-01:${{needs.build.outputs.di_tag_main}}
             sudo docker stop my-simple-webapp || true
