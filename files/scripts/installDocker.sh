@@ -29,4 +29,4 @@ sudo chmod +x /usr/local/bin/docker-compose
 sleep 8
 
 # Deploy sample web application
-docker run -d -p 80:80 -e PORT=80 --name=my-simple-webapp kebonce40/pdso-challenge-01:001
+sudo docker run -d -p 80:80 -e PORT=80 --name=my-simple-webapp kebonce40/pdso-challenge-01:001
